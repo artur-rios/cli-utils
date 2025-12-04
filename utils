@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Prefer explicit root via environment; fallback to dispatcher directory
+if [[ -n "${CLI_UTILS_ROOT:-}" ]]; then
+  SCRIPT_DIR="${CLI_UTILS_ROOT}"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+# Convert a POSIX path to Windows path when invoking PowerShell on Windows (Git Bash/MSYS)
+to_windows_path() {
+  local p="$1"
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$p"
+    return 0
+  fi
+  # Fallback simple translator for /d/... -> D:\...
+  if [[ "$p" =~ ^/([a-zA-Z])/(.*)$ ]]; then
+    local drive="${BASH_REMATCH[1]}"
+    local rest="${BASH_REMATCH[2]}"
+    printf '%s:\%s\n' "${drive^^}" "${rest//\//\\}"
+    return 0
+  fi
+  printf '%s\n' "$p"
+}
+
+usage() {
+  cat <<EOF
+Usage: utils <command> [args]
+
+Commands:
+  init-proj <name-or-path>  - create a project from 'project-template'
+  ktype [timeout]            - type 'echo Hello World' at intervals in cmd
+  test-init-proj              - smoke test for init-proj
+  test-ktype                  - smoke test for ktype
+  list                        - list available commands and tests
+EOF
+}
+
+if [[ $# -lt 1 ]]; then
+  usage
+  exit 1
+fi
+
+CMD="$1"
+shift || true
+
+# Built-in 'list' command before script resolution
+if [[ "$CMD" == "list" ]]; then
+  echo "Dispatcher root: ${SCRIPT_DIR}"
+  echo "Available commands:"
+  for f in "${SCRIPT_DIR}/commands"/*.ps1; do
+    [[ -e "$f" ]] || { echo "  (none)"; break; }
+    echo "  $(basename "$f" .ps1)"
+  done
+  echo "Available tests:"
+  for f in "${SCRIPT_DIR}/tests"/*.ps1; do
+    [[ -e "$f" ]] || { echo "  (none)"; break; }
+    echo "  $(basename "$f" .ps1)"
+  done
+  exit 0
+fi
+
+SCRIPT="${SCRIPT_DIR}/commands/${CMD}.ps1"
+# Validate expected layout next to dispatcher
+if [[ ! -d "${SCRIPT_DIR}/commands" || ! -d "${SCRIPT_DIR}/tests" ]]; then
+  echo "Layout error: expected 'commands/' and 'tests/' next to dispatcher at '${SCRIPT_DIR}'." >&2
+  echo "Ensure PATH includes the dispatcher directory (repo root), not just the file or a copy without sibling folders." >&2
+  usage
+  exit 1
+fi
+
+if [[ ! -f "${SCRIPT}" ]]; then
+  SCRIPT="${SCRIPT_DIR}/tests/${CMD}.ps1"
+fi
+if [[ ! -f "${SCRIPT}" ]]; then
+  echo "Unknown command: ${CMD}" >&2
+  echo "Tried: ${SCRIPT}" >&2
+  usage
+  exit 1
+fi
+
+if command -v pwsh >/dev/null 2>&1; then
+  if [[ "${CMD}" == "init-proj" ]]; then
+    # If no first arg, show friendly error like cmd version
+    if [[ $# -lt 1 || -z "${1-}" ]]; then
+      echo "[ERROR] Destination name/path is required. Usage: utils init-proj <name-or-path>" >&2
+      exit 1
+    fi
+    WIN_SCRIPT="$(to_windows_path "${SCRIPT}")"
+    pwsh -NoProfile -ExecutionPolicy Bypass -Command "& '${WIN_SCRIPT}' -NameOrPath '${1}'"
+  else
+    pwsh -NoProfile -ExecutionPolicy Bypass -File "${SCRIPT}" "$@"
+  fi
+  exit $?
+elif command -v powershell >/dev/null 2>&1; then
+  if [[ "${CMD}" == "init-proj" ]]; then
+    if [[ $# -lt 1 || -z "${1-}" ]]; then
+      echo "[ERROR] Destination name/path is required. Usage: utils init-proj <name-or-path>" >&2
+      exit 1
+    fi
+    WIN_SCRIPT="$(to_windows_path "${SCRIPT}")"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "& '${WIN_SCRIPT}' -NameOrPath '${1}'"
+  else
+    powershell -NoProfile -ExecutionPolicy Bypass -File "${SCRIPT}" "$@"
+  fi
+  exit $?
+else
+  echo "Neither 'pwsh' nor 'powershell' found on PATH" >&2
+  exit 127
+fi
+
+# list command: enumerate available commands and tests
+if [[ "${CMD}" == "list" ]]; then
+  echo "Available commands:"
+  for f in "${SCRIPT_DIR}/commands"/*.ps1; do
+    [[ -e "$f" ]] || continue
+    echo "  $(basename "$f" .ps1)"
+  done
+  echo "Available tests:"
+  for f in "${SCRIPT_DIR}/tests"/*.ps1; do
+    [[ -e "$f" ]] || continue
+    echo "  $(basename "$f" .ps1)"
+  done
+  exit 0
+fi
