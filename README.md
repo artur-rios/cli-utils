@@ -1,5 +1,11 @@
 # CLI Utils
 
+> [!NOTE]
+> This is the real, open-source code of cli-utils. Its home is Forgejo, at
+> https://git.techcraftsmen.net/artur-rios/cli-utils; the copy on GitHub is a read-only mirror, for viewing only, and
+> its issues and pull requests are not followed. If you want to contribute, email me at
+> arturdev@duck.com.
+
 A small CLI toolkit, providing:
 
 - `init-proj`: Create a new folder with the exact structure and files from [project-template](https://github.com/artur-rios/project-template). The template is fetched from GitHub at runtime (via `git clone` or ZIP download), so no local `project-template` folder is required.
