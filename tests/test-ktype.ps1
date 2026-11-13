@@ -17,7 +17,7 @@ $job = Start-Job -ScriptBlock {
 
 Write-Host "[STEP] 1/3 Waiting briefly to allow ktype to run"
 Start-Sleep -Seconds 5
-    
+
 Write-Host "[STEP] 2/3 Stopping ktype background job"
 try {
     Stop-Job -Job $job -Force -ErrorAction SilentlyContinue

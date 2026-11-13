@@ -1,0 +1,19 @@
+# What Jenkins checks for this repository, read by the pipeline of the yggdrasil installation that runs it
+# (yggdrasil's docs/catalog.md, "Repository pipeline file", has every field). It is data, never code: images
+# (pinned by version and digest, which Renovate keeps up to date), commands, globs and the names of Jenkins
+# credentials. The commands are the scripts under ci/, which run from the repository's root, so you can run them on
+# your machine too. Nothing is deployed or released from here: the checks report on every pull request and push.
+# Check it where the catalog is, in the yggdrasil checkout:
+#   python3 scripts/pipeline_config.py describe cli-utils <this repository's checkout>
+#
+# The tools are PowerShell scripts behind a Bash and a CMD dispatcher. Both checks run in the .NET SDK image for
+# what it carries, not for .NET: Ubuntu with bash, git, curl and PowerShell 7.
+
+checks:
+  lint:                                  # ShellCheck (Bash scripts) and PSScriptAnalyzer (PowerShell scripts), both pinned
+    image: mcr.microsoft.com/dotnet/sdk:10.0.404@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb
+    run: ci/lint.sh
+
+  build:                                 # syntax of every script, then the tests that run on Linux (utils list, test-init-proj)
+    image: mcr.microsoft.com/dotnet/sdk:10.0.404@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb
+    run: ci/build.sh

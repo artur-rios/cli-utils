@@ -110,18 +110,3 @@ else
   echo "Neither 'pwsh' nor 'powershell' found on PATH" >&2
   exit 127
 fi
-
-# list command: enumerate available commands and tests
-if [[ "${CMD}" == "list" ]]; then
-  echo "Available commands:"
-  for f in "${SCRIPT_DIR}/commands"/*.ps1; do
-    [[ -e "$f" ]] || continue
-    echo "  $(basename "$f" .ps1)"
-  done
-  echo "Available tests:"
-  for f in "${SCRIPT_DIR}/tests"/*.ps1; do
-    [[ -e "$f" ]] || continue
-    echo "  $(basename "$f" .ps1)"
-  done
-  exit 0
-fi
